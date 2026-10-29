@@ -37,6 +37,7 @@
         .bg-paid { background: #28a745; }
         .bg-notpaid { background: #dc3545; }
         .bg-upcoming { background: #6c757d; }
+        .bg-maint { background: #1a73e8; }
 
         /* Ledger Summary Grid */
         .summary-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 14px; }
@@ -259,6 +260,27 @@
             renderLedger();
         }
 
+        // Helper: Return list of non-admin Member families from Users sheet
+        function getMemberFamilies() {
+            const familyList = [];
+            (db.users || []).slice(1).forEach(u => {
+                const uName = String(u[0] || "").trim().toLowerCase();
+                const fName = String(u[2] || "").trim();
+                const uRole = String(u[3] || "").trim().toLowerCase();
+                const fee = u[4] ? Number(u[4]) : 500;
+
+                // Exclude Admin from Maintenance and Member calculations
+                if (uRole === "admin" || uName === "admin" || fName.toLowerCase() === "admin" || fName === "") {
+                    return;
+                }
+
+                if (!familyList.some(f => f.name.toLowerCase() === fName.toLowerCase())) {
+                    familyList.push({ name: fName, fee: fee });
+                }
+            });
+            return familyList;
+        }
+
         // Helper: Find Monday 00:00:00 of any given date
         function getMonday(d) {
             const dt = new Date(d.getFullYear(), d.getMonth(), d.getDate());
@@ -272,7 +294,7 @@
             return dt.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
         }
 
-        // AUTOMATIC PERIODIC GATE TURN (MONDAY TO SUNDAY)
+        // 1. AUTOMATIC PERIODIC GATE TURN (MONDAY TO SUNDAY)
         function renderGateSchedule() {
             const rawRows = (db.gateTurns || []).slice(1).filter(r => r[1] && r[1].trim() !== "");
             if (rawRows.length === 0) {
@@ -321,7 +343,7 @@
                 }
             }
 
-            // Render Current Week + Upcoming Weeks (2 full cycles or minimum 8 weeks)
+            // Render Current Week + Upcoming Weeks
             const weeksToShow = Math.max(totalFamilies * 2, 6);
             let html = "<table><tr><th>Order</th><th>Week (Mon – Sun)</th><th>Family Name</th><th>Status</th></tr>";
 
@@ -350,21 +372,11 @@
             document.getElementById("gate-table").innerHTML = html;
         }
 
-        // MONTH-WISE MAINTENANCE COLLECTION TABLE
+        // 2. MONTH-WISE MAINTENANCE COLLECTION TABLE (Excludes Admin)
         function renderMaintenance() {
             const selectedMonth = document.getElementById("month-selector").value;
             const isAdmin = currentUser.role.toLowerCase() === "admin";
-
-            // Get master list of all families from Users tab
-            const familyList = [];
-            (db.users || []).slice(1).forEach(u => {
-                const fName = (u[2] || "").trim();
-                const fee = u[4] ? Number(u[4]) : 500;
-                if (fName && !familyList.some(f => f.name.toLowerCase() === fName.toLowerCase())) {
-                    familyList.push({ name: fName, fee: fee });
-                }
-            });
-
+            const familyList = getMemberFamilies();
             const maintRows = (db.maintenance || []).slice(1);
 
             let html = "<table><tr><th>Family Name</th><th>Amt</th><th>Status</th>";
@@ -377,7 +389,7 @@
                     String(r[1]).trim().toLowerCase() === fam.name.toLowerCase()
                 );
 
-                const status = (record && record[3].trim() === "Paid") ? "Paid" : "Not Paid";
+                const status = (record && String(record[3]).trim() === "Paid") ? "Paid" : "Not Paid";
                 const amount = (record && record[2]) ? record[2] : fam.fee;
                 const payDate = (record && record[4] && status === "Paid") ? record[4] : "";
 
@@ -429,28 +441,68 @@
             await loadDatabase();
         }
 
-        // SOCIETY LEDGER & AUTOMATIC FUND CALCULATION
+        // 3. SOCIETY LEDGER & AUTOMATIC FUND CALCULATION (Includes Maintenance History)
         function renderLedger() {
             const maintRows = (db.maintenance || []).slice(1);
             const ledgerRows = (db.ledger || []).slice(1);
 
-            // 1. Sum all Paid Maintenance
+            // Set of valid non-admin member family names
+            const validMembers = new Set(getMemberFamilies().map(f => f.name.toLowerCase()));
+
             let totalMaintCollected = 0;
+            let totalAdhocFunds = 0;
+            let totalExpenses = 0;
+            const combinedHistory = [];
+
+            // A. Collect Paid Maintenance from valid Members & add to Ledger History
             maintRows.forEach(r => {
-                if (String(r[3]).trim() === "Paid") {
-                    totalMaintCollected += Number(r[2]) || 0;
+                const month = String(r[0] || "").trim();
+                const family = String(r[1] || "").trim();
+                const amt = Number(r[2]) || 0;
+                const status = String(r[3] || "").trim();
+                const payDate = String(r[4] || "-").trim();
+
+                if (status === "Paid" && validMembers.has(family.toLowerCase())) {
+                    totalMaintCollected += amt;
+                    combinedHistory.push({
+                        date: payDate,
+                        badge: `<span class="badge bg-maint">Maintenance</span>`,
+                        sign: "+",
+                        color: "#28a745",
+                        amount: amt,
+                        comments: `${month} – ${family}`
+                    });
                 }
             });
 
-            // 2. Sum Ad-hoc Funds and Expenses from Ledger tab
-            let totalAdhocFunds = 0;
-            let totalExpenses = 0;
-
+            // B. Collect Ad-hoc Funds and Expenses from Ledger tab
             ledgerRows.forEach(r => {
-                const type = String(r[1]).trim();
+                const date = String(r[0] || "-").trim();
+                const type = String(r[1] || "").trim();
                 const amt = Number(r[2]) || 0;
-                if (type === "Fund") totalAdhocFunds += amt;
-                if (type === "Expense") totalExpenses += amt;
+                const comments = String(r[3] || "-").trim();
+
+                if (type === "Fund") {
+                    totalAdhocFunds += amt;
+                    combinedHistory.push({
+                        date: date,
+                        badge: `<span class="badge bg-paid">Ad-hoc Fund</span>`,
+                        sign: "+",
+                        color: "#28a745",
+                        amount: amt,
+                        comments: comments
+                    });
+                } else if (type === "Expense") {
+                    totalExpenses += amt;
+                    combinedHistory.push({
+                        date: date,
+                        badge: `<span class="badge bg-notpaid">Expense</span>`,
+                        sign: "-",
+                        color: "#dc3545",
+                        amount: amt,
+                        comments: comments
+                    });
+                }
             });
 
             const netBalance = (totalMaintCollected + totalAdhocFunds) - totalExpenses;
@@ -460,26 +512,19 @@
             document.getElementById("sum-expense").innerText = "- ₹" + totalExpenses;
             document.getElementById("sum-balance").innerText = "₹" + netBalance;
 
-            // Render Ledger Table (Newest First)
-            if (ledgerRows.length === 0) {
-                document.getElementById("ledger-table").innerHTML = "<p style='font-size:13px;color:#666;'>No ad-hoc funds or expenses recorded yet.</p>";
+            // Render Combined History Table (Newest First)
+            if (combinedHistory.length === 0) {
+                document.getElementById("ledger-table").innerHTML = "<p style='font-size:13px;color:#666;'>No maintenance payments, funds, or expenses recorded yet.</p>";
                 return;
             }
 
-            let html = "<table><tr><th>Date</th><th>Type</th><th>Amount</th><th>Comments</th></tr>";
-            ledgerRows.slice().reverse().forEach(r => {
-                const isExpense = String(r[1]).trim() === "Expense";
-                const badge = isExpense
-                    ? `<span class="badge bg-notpaid">Expense</span>`
-                    : `<span class="badge bg-paid">Ad-hoc Fund</span>`;
-                const sign = isExpense ? "-" : "+";
-                const color = isExpense ? "#dc3545" : "#28a745";
-
+            let html = "<table><tr><th>Date</th><th>Type</th><th>Amount</th><th>Details / Comments</th></tr>";
+            combinedHistory.slice().reverse().forEach(item => {
                 html += `<tr>
-                    <td>${r[0]}</td>
-                    <td>${badge}</td>
-                    <td style="font-weight:bold; color:${color};">${sign} ₹${r[2]}</td>
-                    <td>${r[3] || "-"}</td>
+                    <td>${item.date}</td>
+                    <td>${item.badge}</td>
+                    <td style="font-weight:bold; color:${item.color};">${item.sign} ₹${item.amount}</td>
+                    <td>${item.comments}</td>
                 </tr>`;
             });
             html += "</table>";
