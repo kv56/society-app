@@ -260,17 +260,16 @@
             renderLedger();
         }
 
-        // Helper: Return list of non-admin Member families from Users sheet
+// Helper: Return list of non-admin Member families based strictly on Role
         function getMemberFamilies() {
             const familyList = [];
             (db.users || []).slice(1).forEach(u => {
-                const uName = String(u[0] || "").trim().toLowerCase();
                 const fName = String(u[2] || "").trim();
                 const uRole = String(u[3] || "").trim().toLowerCase();
-                const fee = u[4] ? Number(u[4]) : 500;
+                const fee = u[4] ? Number(u[4]) : 250;
 
-                // Exclude Admin from Maintenance and Member calculations
-                if (uRole === "admin" || uName === "admin" || fName.toLowerCase() === "admin" || fName === "") {
+                // Strictly exclude anyone whose Role is admin (ignoring family name text)
+                if (uRole === "admin" || fName === "") {
                     return;
                 }
 
