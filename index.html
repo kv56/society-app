@@ -453,7 +453,7 @@
             await loadDatabase();
         }
 
-        // 3. SOCIETY LEDGER & MONTH-FILTERED FUND CALCULATION
+        // 3. SOCIETY LEDGER: All-Time Summary + Month-Filtered History
         function renderLedger() {
             const selectedLedgerMonth = document.getElementById("ledger-month-selector").value;
             const maintRows = (db.maintenance || []).slice(1);
@@ -464,9 +464,9 @@
             let totalMaintCollected = 0;
             let totalAdhocFunds = 0;
             let totalExpenses = 0;
-            const combinedHistory = [];
+            const allHistory = [];
 
-            // A. Process Maintenance Payments
+            // 1. Calculate ALL-TIME Totals & Build Full History List
             maintRows.forEach(r => {
                 const month = String(r[0] || "").trim();
                 const family = String(r[1] || "").trim();
@@ -475,88 +475,83 @@
                 const payDate = String(r[4] || "-").trim();
 
                 if (status === "paid" && validMembers.has(family.toLowerCase())) {
-                    // Filter by selected month if not "ALL"
-                    if (selectedLedgerMonth === "ALL" || month.toLowerCase() === selectedLedgerMonth.toLowerCase()) {
-                        totalMaintCollected += amt;
-                        combinedHistory.push({
-                            date: payDate,
-                            badge: `<span class="badge bg-maint">Maintenance</span>`,
-                            sign: "+",
-                            color: "#28a745",
-                            amount: amt,
-                            comments: `${month} – ${family}`
-                        });
-                    }
+                    totalMaintCollected += amt;
+                    allHistory.push({
+                        month: month,
+                        date: payDate,
+                        badge: `<span class="badge bg-maint">Maintenance</span>`,
+                        sign: "+",
+                        color: "#28a745",
+                        amount: amt,
+                        comments: `${month} – ${family}`
+                    });
                 }
             });
 
-            // B. Process Ad-hoc Funds and Expenses from Ledger tab
             ledgerRows.forEach(r => {
-                const date = String(r[0] || "-").trim(); // e.g. "29/10/2026"
+                const date = String(r[0] || "-").trim();
                 const type = String(r[1] || "").trim().toLowerCase();
-                const amt = Number(r[2]) || 0;
+                const amt = Number(r[2] || 0);
                 const comments = String(r[3] || "-").trim();
 
-                // Check if ledger date matches selected month (by checking if date string contains month/year or if ALL)
-                let matchesMonth = true;
-                if (selectedLedgerMonth !== "ALL") {
-                    // Convert date "DD/MM/YYYY" or similar to month name comparison if needed, 
-                    // or check if the ledger entry corresponds to the selected month.
-                    // For simplicity, if ledger entry has a date, we match it or include it.
-                    // Let's match by checking if the ledger item's month matches selectedLedgerMonth.
-                    try {
-                        const parts = date.split("/");
-                        if (parts.length === 3) {
-                            const d = new Date(parts[2], parts[1] - 1, parts[0]);
-                            const monthsArr = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
-                            const entryMonthName = monthsArr[d.getMonth()] + " " + d.getFullYear();
-                            matchesMonth = (entryMonthName.toLowerCase() === selectedLedgerMonth.toLowerCase());
-                        }
-                    } catch(err) {
-                        matchesMonth = true;
+                let entryMonthName = "";
+                try {
+                    const parts = date.split("/");
+                    if (parts.length === 3) {
+                        const d = new Date(parts[2], parts[1] - 1, parts[0]);
+                        const monthsArr = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+                        entryMonthName = monthsArr[d.getMonth()] + " " + d.getFullYear();
                     }
+                } catch(err) {
+                    entryMonthName = "";
                 }
 
-                if (matchesMonth) {
-                    if (type === "fund") {
-                        totalAdhocFunds += amt;
-                        combinedHistory.push({
-                            date: date,
-                            badge: `<span class="badge bg-paid">Ad-hoc Fund</span>`,
-                            sign: "+",
-                            color: "#28a745",
-                            amount: amt,
-                            comments: comments
-                        });
-                    } else if (type === "expense") {
-                        totalExpenses += amt;
-                        combinedHistory.push({
-                            date: date,
-                            badge: `<span class="badge bg-notpaid">Expense</span>`,
-                            sign: "-",
-                            color: "#dc3545",
-                            amount: amt,
-                            comments: comments
-                        });
-                    }
+                if (type === "fund") {
+                    totalAdhocFunds += amt;
+                    allHistory.push({
+                        month: entryMonthName,
+                        date: date,
+                        badge: `<span class="badge bg-paid">Ad-hoc Fund</span>`,
+                        sign: "+",
+                        color: "#28a745",
+                        amount: amt,
+                        comments: comments
+                    });
+                } else if (type === "expense") {
+                    totalExpenses += amt;
+                    allHistory.push({
+                        month: entryMonthName,
+                        date: date,
+                        badge: `<span class="badge bg-notpaid">Expense</span>`,
+                        sign: "-",
+                        color: "#dc3545",
+                        amount: amt,
+                        comments: comments
+                    });
                 }
             });
 
+            // Summary boxes ALWAYS show All-Time totals till date
             const netBalance = (totalMaintCollected + totalAdhocFunds) - totalExpenses;
-
             document.getElementById("sum-maint").innerText = "₹" + totalMaintCollected;
             document.getElementById("sum-adhoc").innerText = "₹" + totalAdhocFunds;
             document.getElementById("sum-expense").innerText = "- ₹" + totalExpenses;
             document.getElementById("sum-balance").innerText = "₹" + netBalance;
 
-            // Render Combined History Table
-            if (combinedHistory.length === 0) {
+            // 2. Filter History Table based on Dropdown Selection
+            const filteredHistory = allHistory.filter(item => {
+                if (selectedLedgerMonth === "ALL") return true;
+                return item.month.toLowerCase() === selectedLedgerMonth.toLowerCase();
+            });
+
+            // Render History Table
+            if (filteredHistory.length === 0) {
                 document.getElementById("ledger-table").innerHTML = "<p style='font-size:13px;color:#666;'>No transactions recorded for this month.</p>";
                 return;
             }
 
             let html = "<table><tr><th>Date</th><th>Type</th><th>Amount</th><th>Details / Comments</th></tr>";
-            combinedHistory.slice().reverse().forEach(item => {
+            filteredHistory.slice().reverse().forEach(item => {
                 html += `<tr>
                     <td>${item.date}</td>
                     <td>${item.badge}</td>
