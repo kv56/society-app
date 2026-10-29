@@ -398,7 +398,8 @@
                     String(r[1] || "").trim().toLowerCase() === fam.name.toLowerCase()
                 );
 
-                const rawStatus = record ? String(r[3] || "").trim().toLowerCase() : "";
+                // FIXED: Changed 'r' to 'record' here
+                const rawStatus = record ? String(record[3] || "").trim().toLowerCase() : "";
                 const isPaid = (rawStatus === "paid");
                 const status = isPaid ? "Paid" : "Not Paid";
                 const amount = (record && record[2]) ? record[2] : fam.fee;
@@ -430,7 +431,7 @@
             html += "</table>";
             document.getElementById("maint-table").innerHTML = html;
         }
-
+    
         async function toggleMaint(month, familyName, amount, newStatus, btnEl) {
             btnEl.disabled = true;
             btnEl.innerText = "Saving...";
