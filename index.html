@@ -417,7 +417,7 @@
     // ============================================================================
     // 1. CONFIGURATION (PASTE YOUR APPS SCRIPT URL HERE)
     // ============================================================================
-    const APPS_SCRIPT_URL = "https://script.google.com/macros/s/YOUR_DEPLOYMENT_ID/exec";
+    const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxaOjgGNak_slpyi7hewHq9D0Ova3xmzdzk_qhaqDbLf5HrlG9E72kQ5q_4y7d5Mk0m/exec';
 
     let currentUser = null;
     let portalData = {
@@ -442,4 +442,485 @@
     const fcmStatusText = document.getElementById("fcmStatusText");
     const addEntryBtn = document.getElementById("addEntryBtn");
 
-    // =================================================
+    // ============================================================================
+    // 2. INIT & DATA LOAD
+    // ============================================================================
+    document.addEventListener("DOMContentLoaded", async () => {
+      const savedUser = localStorage.getItem("society_user");
+      if (savedUser) {
+        currentUser = JSON.parse(savedUser);
+        showDashboard();
+        syncFcmTokenWithBackend(currentUser.username);
+      } else {
+        showLogin();
+      }
+      await fetchPortalData();
+    });
+
+    async function fetchPortalData() {
+      try {
+        const res = await fetch(APPS_SCRIPT_URL);
+        const data = await res.json();
+        portalData = data;
+
+        if (currentUser) {
+          renderGateTurn();
+          populateMaintenanceFilters();
+          filterMaintenance();
+          filterLedger();
+        }
+      } catch (err) {
+        console.error("Failed to load portal data:", err);
+      }
+    }
+
+    // ============================================================================
+    // 3. FCM TOKEN SYNC (Checks AndroidBridge)
+    // ============================================================================
+    function syncFcmTokenWithBackend(username) {
+      if (!username) return;
+
+      if (window.AndroidBridge && typeof window.AndroidBridge.getFcmToken === "function") {
+        let attempts = 0;
+        const trySync = () => {
+          attempts++;
+          const token = window.AndroidBridge.getFcmToken();
+          if (token && token.trim().length > 0) {
+            fcmStatusText.textContent = "🔔 Registering device for 9:55 PM alerts...";
+
+            fetch(APPS_SCRIPT_URL, {
+              method: "POST",
+              headers: { "Content-Type": "text/plain;charset=utf-8" },
+              body: JSON.stringify({
+                action: "updateFcmToken",
+                username: username,
+                fcmToken: token.trim()
+              })
+            })
+            .then(res => res.json())
+            .then(data => {
+              if (data.success) {
+                fcmStatusText.textContent = "✅ Automatic 9:55 PM Hindi Voice Alerts Active";
+              }
+            })
+            .catch(err => console.error("FCM Token sync error:", err));
+          } else if (attempts < 4) {
+            setTimeout(trySync, 2000);
+          }
+        };
+        trySync();
+      }
+    }
+
+    // ============================================================================
+    // 4. LOGIN HANDLER
+    // ============================================================================
+    loginForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      loginError.textContent = "";
+      loginBtn.textContent = "Checking...";
+      loginBtn.disabled = true;
+
+      const uInput = document.getElementById("username").value.trim().toLowerCase();
+      const pInput = document.getElementById("password").value.trim();
+
+      if (!portalData.users || portalData.users.length === 0) {
+        await fetchPortalData();
+      }
+
+      const userRows = (portalData.users || []).slice(1);
+      const headers = (portalData.users[0] || []).map(h => String(h).toLowerCase());
+
+      const passIdx = headers.findIndex(h => h.includes("pass")) !== -1 ? headers.findIndex(h => h.includes("pass")) : 1;
+      const familyIdx = headers.findIndex(h => h.includes("family") || (h.includes("name") && !h.includes("user"))) !== -1
+        ? headers.findIndex(h => h.includes("family") || (h.includes("name") && !h.includes("user")))
+        : (passIdx === 1 ? 2 : 1);
+      const roleIdx = headers.findIndex(h => h.includes("role"));
+
+      const matched = userRows.find(r => {
+        const u = String(r[0] || "").trim().toLowerCase();
+        const p = String(r[passIdx] || "").trim();
+        return u === uInput && p === pInput;
+      });
+
+      loginBtn.textContent = "Login";
+      loginBtn.disabled = false;
+
+      if (matched) {
+        const role = roleIdx !== -1 ? String(matched[roleIdx]).trim().toLowerCase() : (uInput === "admin" ? "admin" : "member");
+        currentUser = {
+          username: String(matched[0]).trim(),
+          familyName: String(matched[familyIdx] || matched[0]).trim(),
+          isAdmin: role === "admin" || uInput === "admin"
+        };
+
+        localStorage.setItem("society_user", JSON.stringify(currentUser));
+        showDashboard();
+        syncFcmTokenWithBackend(currentUser.username);
+        renderGateTurn();
+        populateMaintenanceFilters();
+        filterMaintenance();
+        filterLedger();
+      } else {
+        loginError.textContent = "Invalid username or password.";
+      }
+    });
+
+    // ============================================================================
+    // 5. DATE PARSER (Supports DD/MM/YYYY, YYYY-MM-DD, or Standard Strings)
+    // ============================================================================
+    function parseDateSafe(val) {
+      if (!val) return null;
+      if (val instanceof Date) return val;
+      const str = String(val).trim();
+      const parts = str.split(/[\/\-.]/);
+      if (parts.length === 3) {
+        if (parts[0].length <= 2 && parts[2].length === 4) {
+          // DD/MM/YYYY
+          return new Date(Number(parts[2]), Number(parts[1]) - 1, Number(parts[0]));
+        } else if (parts[0].length === 4) {
+          // YYYY-MM-DD
+          return new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
+        }
+      }
+      const d = new Date(str);
+      return isNaN(d.getTime()) ? null : d;
+    }
+
+    function formatDateShort(val) {
+      const d = parseDateSafe(val);
+      if (!d) return String(val);
+      return d.toLocaleDateString("en-IN", { day: "numeric", month: "short" });
+    }
+
+    // ============================================================================
+    // 6. RENDER GATE TURN TAB & ACTIVE HIGHLIGHT
+    // ============================================================================
+    function renderGateTurn() {
+      const rows = portalData.gateTurns || [];
+      const table = document.getElementById("gateTable");
+
+      if (rows.length <= 1) {
+        table.innerHTML = "<tr><td>No gate turns scheduled.</td></tr>";
+        return;
+      }
+
+      const headers = rows[0];
+      const dataRows = rows.slice(1);
+
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
+      let activeFamily = null;
+      let activeRange = "";
+
+      let html = "<thead><tr>";
+      headers.forEach(h => { html += `<th>${h}</th>`; });
+      html += "</tr></thead><tbody>";
+
+      dataRows.forEach(r => {
+        const start = parseDateSafe(r[0]);
+        const end = parseDateSafe(r[1]);
+        const family = String(r[2] || "").trim();
+
+        let isCurrent = false;
+        if (start && end) {
+          const s = new Date(start); s.setHours(0,0,0,0);
+          const e = new Date(end); e.setHours(23,59,59,999);
+          if (today >= s && today <= e) {
+            isCurrent = true;
+            activeFamily = family;
+            activeRange = `${formatDateShort(r[0])} - ${formatDateShort(r[1])}`;
+          }
+        }
+
+        html += `<tr class="${isCurrent ? 'active-row' : ''}">`;
+        r.forEach((cell, idx) => {
+          html += `<td>${idx === 0 || idx === 1 ? formatDateShort(cell) : cell}${isCurrent && idx === 2 ? ' 🔒 (Active)' : ''}</td>`;
+        });
+        html += "</tr>";
+      });
+
+      html += "</tbody>";
+      table.innerHTML = html;
+
+      // Update Banner
+      if (activeFamily) {
+        const isMyTurn = currentUser &&
+          currentUser.familyName.toLowerCase() === activeFamily.toLowerCase();
+
+        activeFamilyTitle.textContent = isMyTurn
+          ? `🚪 Aapka Gate Turn Hai (${activeFamily})`
+          : `${activeFamily} Family Turn`;
+        activeDateRange.textContent = `${activeRange} • Kripya 10:00 PM baje gate lock karein`;
+
+        if (isMyTurn) {
+          currentTurnBox.classList.add("my-turn");
+          turnBadge.textContent = "Your Active Turn";
+          // Local fallback bridge trigger
+          if (window.AndroidBridge && typeof window.AndroidBridge.setGateAlarm === "function") {
+            window.AndroidBridge.setGateAlarm(true, activeFamily);
+          }
+        } else {
+          currentTurnBox.classList.remove("my-turn");
+          turnBadge.textContent = "Current Week Turn";
+        }
+      } else {
+        activeFamilyTitle.textContent = "No Active Turn For Today";
+        activeDateRange.textContent = "Please check the upcoming schedule below.";
+      }
+    }
+
+    // ============================================================================
+    // 7. RENDER MAINTENANCE TAB WITH FILTERS & ADMIN ACTION
+    // ============================================================================
+    function populateMaintenanceFilters() {
+      const rows = (portalData.maintenance || []).slice(1);
+      const monthSelect = document.getElementById("maintMonthFilter");
+      const months = new Set();
+
+      rows.forEach(r => {
+        if (r[1]) months.add(String(r[1]).trim()); // Col B: Month/Period
+      });
+
+      monthSelect.innerHTML = `<option value="ALL">All Months</option>`;
+      months.forEach(m => {
+        monthSelect.innerHTML += `<option value="${m}">${m}</option>`;
+      });
+    }
+
+    function filterMaintenance() {
+      const rows = portalData.maintenance || [];
+      const table = document.getElementById("maintTable");
+
+      if (rows.length <= 1) {
+        table.innerHTML = "<tr><td>No maintenance records found.</td></tr>";
+        return;
+      }
+
+      const headers = rows[0];
+      const dataRows = rows.slice(1);
+
+      const monthFilter = document.getElementById("maintMonthFilter").value;
+      const statusFilter = document.getElementById("maintStatusFilter").value;
+
+      let html = "<thead><tr>";
+      headers.forEach(h => { html += `<th>${h}</th>`; });
+      if (currentUser && currentUser.isAdmin) {
+        html += `<th>Admin Action</th>`;
+      }
+      html += "</tr></thead><tbody>";
+
+      dataRows.forEach((r, idx) => {
+        const rowMonth = String(r[1] || "").trim();
+        // Detect Status column (often Col D or Col E)
+        const statusIdx = r.findIndex(c => String(c).toLowerCase() === "paid" || String(c).toLowerCase() === "unpaid");
+        const status = statusIdx !== -1 ? String(r[statusIdx]).trim() : String(r[3] || "").trim();
+
+        const matchMonth = (monthFilter === "ALL" || rowMonth === monthFilter);
+        const matchStatus = (statusFilter === "ALL" || (statusFilter === "Paid" ? status.toLowerCase() === "paid" : status.toLowerCase() !== "paid"));
+
+        if (matchMonth && matchStatus) {
+          const isPaid = status.toLowerCase() === "paid";
+          html += "<tr>";
+          r.forEach((cell, cIdx) => {
+            if (cIdx === statusIdx || (statusIdx === -1 && cIdx === 3)) {
+              html += `<td><span class="${isPaid ? 'badge-paid' : 'badge-unpaid'}">${cell}</span></td>`;
+            } else {
+              html += `<td>${cell}</td>`;
+            }
+          });
+
+          // Admin button to toggle Paid / Unpaid
+          if (currentUser && currentUser.isAdmin) {
+            const rowIndexInSheet = idx + 2; // Row 1 is header
+            html += `<td>
+              <button class="action-btn ${isPaid ? 'unpay' : 'pay'}" onclick="toggleMaintStatus(${rowIndexInSheet}, '${isPaid ? 'Unpaid' : 'Paid'}')">
+                Mark ${isPaid ? 'Unpaid' : 'Paid'}
+              </button>
+            </td>`;
+          }
+          html += "</tr>";
+        }
+      });
+
+      html += "</tbody>";
+      table.innerHTML = html;
+    }
+
+    async function toggleMaintStatus(sheetRow, newStatus) {
+      if (!confirm(`Mark this record as ${newStatus}?`)) return;
+
+      try {
+        const res = await fetch(APPS_SCRIPT_URL, {
+          method: "POST",
+          headers: { "Content-Type": "text/plain;charset=utf-8" },
+          body: JSON.stringify({
+            action: "updateMaintenance",
+            row: sheetRow,
+            status: newStatus
+          })
+        });
+        const data = await res.json();
+        if (data.success) {
+          await fetchPortalData();
+        } else {
+          alert("Error: " + (data.message || "Failed to update"));
+        }
+      } catch (err) {
+        alert("Server communication error");
+      }
+    }
+
+    // ============================================================================
+    // 8. RENDER LEDGER TAB WITH FILTERS, TOTALS & ADD ENTRY
+    // ============================================================================
+    function filterLedger() {
+      const rows = portalData.ledger || [];
+      const table = document.getElementById("ledgerTable");
+
+      if (rows.length <= 1) {
+        table.innerHTML = "<tr><td>No ledger transactions.</td></tr>";
+        return;
+      }
+
+      const headers = rows[0];
+      const dataRows = rows.slice(1);
+      const typeFilter = document.getElementById("ledgerTypeFilter").value;
+
+      let totalCredit = 0;
+      let totalDebit = 0;
+
+      let html = "<thead><tr>";
+      headers.forEach(h => { html += `<th>${h}</th>`; });
+      html += "</tr></thead><tbody>";
+
+      dataRows.forEach(r => {
+        // Look for Type and Amount columns
+        const typeIdx = r.findIndex(c => String(c).toLowerCase().includes("fund") || String(c).toLowerCase().includes("expense") || String(c).toLowerCase().includes("credit") || String(c).toLowerCase().includes("debit"));
+        const amountIdx = r.findIndex((c, idx) => idx > 0 && !isNaN(parseFloat(c)) && isFinite(c));
+
+        const transType = typeIdx !== -1 ? String(r[typeIdx]).trim() : "";
+        const amount = amountIdx !== -1 ? parseFloat(r[amountIdx]) || 0 : 0;
+
+        const isCredit = transType.toLowerCase().includes("fund") || transType.toLowerCase().includes("credit") || transType.toLowerCase().includes("jama");
+
+        if (isCredit) {
+          totalCredit += amount;
+        } else {
+          totalDebit += amount;
+        }
+
+        const matchType = (typeFilter === "ALL" || (typeFilter === "Fund" ? isCredit : !isCredit));
+
+        if (matchType) {
+          html += "<tr>";
+          r.forEach((cell, idx) => {
+            if (idx === amountIdx) {
+              html += `<td style="font-weight:600; color:${isCredit ? 'var(--success)' : 'var(--danger)'}">₹${cell}</td>`;
+            } else {
+              html += `<td>${cell}</td>`;
+            }
+          });
+          html += "</tr>";
+        }
+      });
+
+      html += "</tbody>";
+      table.innerHTML = html;
+
+      // Update Summary Totals
+      document.getElementById("sumCredit").textContent = `₹${totalCredit}`;
+      document.getElementById("sumDebit").textContent = `₹${totalDebit}`;
+      const balance = totalCredit - totalDebit;
+      const balEl = document.getElementById("sumBalance");
+      balEl.textContent = `₹${balance}`;
+      balEl.style.color = balance >= 0 ? "var(--success)" : "var(--danger)";
+    }
+
+    function openLedgerModal() {
+      document.getElementById("ledgerModal").classList.remove("hidden");
+    }
+
+    function closeLedgerModal() {
+      document.getElementById("ledgerModal").classList.add("hidden");
+    }
+
+    document.getElementById("ledgerForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const saveBtn = document.getElementById("saveEntryBtn");
+      saveBtn.disabled = true;
+      saveBtn.textContent = "Saving...";
+
+      const entryType = document.getElementById("entryType").value;
+      const entryAmount = document.getElementById("entryAmount").value;
+      const entryDesc = document.getElementById("entryDesc").value;
+
+      try {
+        const res = await fetch(APPS_SCRIPT_URL, {
+          method: "POST",
+          headers: { "Content-Type": "text/plain;charset=utf-8" },
+          body: JSON.stringify({
+            action: "addLedgerEntry",
+            type: entryType,
+            amount: entryAmount,
+            description: entryDesc,
+            addedBy: currentUser ? currentUser.username : "Admin"
+          })
+        });
+        const data = await res.json();
+        if (data.success) {
+          closeLedgerModal();
+          document.getElementById("ledgerForm").reset();
+          await fetchPortalData();
+        } else {
+          alert("Error adding entry: " + (data.message || "Failed"));
+        }
+      } catch (err) {
+        alert("Failed to connect to Google Sheets");
+      }
+
+      saveBtn.disabled = false;
+      saveBtn.textContent = "Save Entry";
+    });
+
+    // ============================================================================
+    // 9. TAB SWITCHER & VIEWS
+    // ============================================================================
+    function switchTab(tabId, btn) {
+      ["gateTab", "maintTab", "ledgerTab"].forEach(id => {
+        document.getElementById(id).classList.add("hidden");
+      });
+      document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
+
+      document.getElementById(tabId).classList.remove("hidden");
+      btn.classList.add("active");
+    }
+
+    function showDashboard() {
+      loginView.classList.add("hidden");
+      dashboardView.classList.remove("hidden");
+      if (currentUser) {
+        welcomeText.textContent = `Namaste, ${currentUser.familyName}!`;
+        userSubText.textContent = `Logged in as @${currentUser.username} ${currentUser.isAdmin ? '👑 (Admin)' : ''}`;
+        if (currentUser.isAdmin) {
+          addEntryBtn.classList.remove("hidden");
+        } else {
+          addEntryBtn.classList.add("hidden");
+        }
+      }
+    }
+
+    function showLogin() {
+      dashboardView.classList.add("hidden");
+      loginView.classList.remove("hidden");
+    }
+
+    document.getElementById("logoutBtn").addEventListener("click", () => {
+      localStorage.removeItem("society_user");
+      currentUser = null;
+      showLogin();
+    });
+  </script>
+</body>
+</html>
