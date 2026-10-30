@@ -304,9 +304,11 @@
                             const statusEl = document.getElementById("fcm-sync-status");
                             if (statusEl && data.success) {
                                 statusEl.innerText = "🔔 9:55 PM Voice Alerts Active for this Device";
+                            } else if (!data.success) {
+                                console.warn("FCM registration note:", data.message);
                             }
                         })
-                        .catch(err => console.error("FCM sync error:", err));
+                        .catch(err => console.error("FCM sync network error:", err));
                     } else if (attempts < 5) {
                         setTimeout(trySync, 2000);
                     }
@@ -314,7 +316,6 @@
                 trySync();
             }
         }
-
         // Helper: Return list of non-admin Member families based strictly on Role
         function getMemberFamilies() {
             const familyList = [];
