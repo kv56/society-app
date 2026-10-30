@@ -462,27 +462,35 @@
             document.getElementById("maint-table").innerHTML = html;
         }
     
-        async function toggleMaint(month, familyName, amount, newStatus, btnEl) {
+       async function toggleMaint(month, familyName, amount, newStatus, btnEl) {
             btnEl.disabled = true;
             btnEl.innerText = "Saving...";
             const paymentDate = newStatus === "Paid" ? new Date().toLocaleDateString("en-GB") : "-";
-
-            await fetch(API_URL, {
-                method: "POST",
-                headers: { "Content-Type": "text/plain;charset=utf-8" },
-                body: JSON.stringify({
-                    action: "toggleMaintenance",
-                    month: month,
-                    familyName: familyName,
-                    amount: amount,
-                    status: newStatus,
-                    paymentDate: paymentDate
-                })
-            });
-
+        
+            try {
+                const res = await fetch(API_URL, {
+                    method: "POST",
+                    redirect: "follow",
+                    headers: { "Content-Type": "text/plain;charset=utf-8" },
+                    body: JSON.stringify({
+                        action: "toggleMaintenance",
+                        month: month,
+                        familyName: familyName,
+                        amount: amount,
+                        status: newStatus,
+                        paymentDate: paymentDate
+                    })
+                });
+                const result = await res.json();
+                if (!result.success) {
+                    alert("Save failed: " + (result.message || result.error || "Unknown error"));
+                }
+            } catch (e) {
+                console.error("Maintenance toggle error:", e);
+            }
+        
             await loadDatabase();
         }
-
         // 3. SOCIETY LEDGER: All-Time Summary + Month-Filtered History
         function renderLedger() {
             const selectedLedgerMonth = document.getElementById("ledger-month-selector").value;
@@ -594,37 +602,45 @@
             const type = document.getElementById("l-type").value;
             const amount = document.getElementById("l-amount").value.trim();
             const comments = document.getElementById("l-comments").value.trim();
-
+        
             if (!amount || Number(amount) <= 0) {
                 alert("Please enter a valid amount.");
                 return;
             }
-
+        
             const btn = document.getElementById("add-ledger-btn");
             btn.disabled = true;
             btn.innerText = "Saving...";
-
-            await fetch(API_URL, {
-                method: "POST",
-                headers: { "Content-Type": "text/plain;charset=utf-8" },
-                body: JSON.stringify({
-                    action: "addLedger",
-                    date: new Date().toLocaleDateString("en-GB"),
-                    type: type,
-                    amount: Number(amount),
-                    comments: comments || "-",
-                    addedBy: currentUser.familyName
-                })
-            });
-
+        
+            try {
+                const res = await fetch(API_URL, {
+                    method: "POST",
+                    redirect: "follow",
+                    headers: { "Content-Type": "text/plain;charset=utf-8" },
+                    body: JSON.stringify({
+                        action: "addLedger",
+                        date: new Date().toLocaleDateString("en-GB"),
+                        type: type,
+                        amount: Number(amount),
+                        comments: comments || "-",
+                        addedBy: currentUser.familyName
+                    })
+                });
+                const result = await res.json();
+                if (!result.success) {
+                    alert("Entry failed: " + (result.message || result.error || "Unknown error"));
+                }
+            } catch (e) {
+                console.error("Ledger save error:", e);
+            }
+        
             document.getElementById("l-amount").value = "";
             document.getElementById("l-comments").value = "";
             btn.disabled = false;
             btn.innerText = "+ Save Transaction";
-
+        
             await loadDatabase();
         }
-
         initMonths();
         loadDatabase();
     </script>
