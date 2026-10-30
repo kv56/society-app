@@ -346,6 +346,7 @@
         }
 
         // 1. AUTOMATIC PERIODIC GATE TURN (MONDAY TO SUNDAY ROTATION)
+        // 1. AUTOMATIC PERIODIC GATE TURN (MONDAY TO SUNDAY ROTATION)
         function renderGateSchedule() {
             const rawRows = (db.gateTurns || []).slice(1).filter(r => r[1] && String(r[1]).trim() !== "");
             if (rawRows.length === 0) {
@@ -355,10 +356,10 @@
 
             rawRows.sort((a, b) => Number(a[0]) - Number(b[0]));
 
-            let baseMondayStr = (db.gateTurns[1] && db.gateTurns[1][2]) ? String(db.gateTurns[1][2]).trim() : "2026-10-26";
+            let baseMondayStr = (db.gateTurns[1] && db.gateTurns[1][2]) ? String(db.gateTurns[1][2]).trim() : "2026-10-19";
             let baseDate = new Date(baseMondayStr + "T00:00:00");
             if (isNaN(baseDate.getTime())) {
-                baseDate = new Date(2026, 9, 26);
+                baseDate = new Date(2026, 9, 19);
             }
             const baseMonday = getMonday(baseDate);
             const currentMonday = getMonday(new Date());
@@ -385,7 +386,8 @@
                 }
             }
 
-            const weeksToShow = Math.max(totalFamilies * 2, 6);
+            // Exactly 1 Active Week + 4 Upcoming Weeks = 5 total rows
+            const weeksToShow = 5;
             let html = "<table><tr><th>Order</th><th>Week (Mon – Sun)</th><th>Family Name</th><th>Status</th></tr>";
 
             for (let w = 0; w < weeksToShow; w++) {
