@@ -9,6 +9,7 @@
       --primary: #2563eb;
       --primary-dark: #1d4ed8;
       --success: #16a34a;
+      --danger: #dc2626;
       --bg: #f8fafc;
       --card: #ffffff;
       --text: #0f172a;
@@ -26,58 +27,61 @@
     body {
       background-color: var(--bg);
       color: var(--text);
-      padding: 16px;
+      padding: 14px;
       min-height: 100vh;
     }
 
     .container {
-      max-width: 520px;
+      max-width: 540px;
       margin: 0 auto;
     }
 
     .card {
       background: var(--card);
       border-radius: 14px;
-      padding: 18px;
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+      padding: 16px;
+      box-shadow: 0 3px 10px rgba(0, 0, 0, 0.05);
       border: 1px solid var(--border);
-      margin-bottom: 16px;
+      margin-bottom: 14px;
     }
 
     h1 { font-size: 1.35rem; font-weight: 700; }
-    h2 { font-size: 1.05rem; font-weight: 600; margin-bottom: 12px; }
-    p.subtitle { font-size: 0.88rem; color: var(--muted); margin-top: 4px; margin-bottom: 18px; }
+    h2 { font-size: 1.05rem; font-weight: 600; margin-bottom: 10px; }
+    p.subtitle { font-size: 0.86rem; color: var(--muted); margin-top: 4px; margin-bottom: 16px; }
 
-    .form-group { margin-bottom: 14px; }
-    label { display: block; font-size: 0.85rem; font-weight: 600; margin-bottom: 6px; }
-    input {
+    .form-group { margin-bottom: 12px; }
+    label { display: block; font-size: 0.82rem; font-weight: 600; margin-bottom: 5px; }
+    input, select {
       width: 100%;
-      padding: 12px;
+      padding: 10px 12px;
       border: 1px solid var(--border);
       border-radius: 8px;
-      font-size: 1rem;
+      font-size: 0.95rem;
       outline: none;
+      background: #fff;
     }
-    input:focus { border-color: var(--primary); }
+    input:focus, select:focus { border-color: var(--primary); }
 
     button.btn {
       width: 100%;
-      padding: 12px;
+      padding: 11px;
       background-color: var(--primary);
       color: #fff;
-      font-size: 1rem;
+      font-size: 0.95rem;
       font-weight: 600;
       border: none;
       border-radius: 8px;
       cursor: pointer;
     }
 
+    button.btn:disabled { opacity: 0.6; cursor: not-allowed; }
+
     button.btn-outline {
       background: transparent;
-      color: #dc2626;
+      color: var(--danger);
       border: 1px solid #fecaca;
       padding: 6px 12px;
-      font-size: 0.82rem;
+      font-size: 0.8rem;
       font-weight: 600;
       border-radius: 6px;
       cursor: pointer;
@@ -87,20 +91,20 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
-      margin-bottom: 14px;
+      margin-bottom: 12px;
     }
 
-    /* Navigation Tabs */
+    /* Tabs */
     .tabs {
       display: flex;
-      gap: 8px;
-      margin-bottom: 16px;
+      gap: 6px;
+      margin-bottom: 14px;
     }
 
     .tab-btn {
       flex: 1;
-      padding: 10px 8px;
-      font-size: 0.85rem;
+      padding: 9px 4px;
+      font-size: 0.82rem;
       font-weight: 600;
       border: 1px solid var(--border);
       border-radius: 8px;
@@ -116,13 +120,13 @@
       border-color: var(--primary);
     }
 
-    /* Active Turn Highlight Banner */
+    /* Active Turn Banner */
     .turn-banner {
-      padding: 16px;
+      padding: 14px;
       border-radius: 12px;
       background: #eff6ff;
       border: 1px solid #bfdbfe;
-      margin-bottom: 16px;
+      margin-bottom: 14px;
     }
 
     .turn-banner.my-turn {
@@ -132,10 +136,10 @@
 
     .turn-badge {
       display: inline-block;
-      font-size: 0.72rem;
+      font-size: 0.7rem;
       font-weight: 700;
       text-transform: uppercase;
-      padding: 4px 8px;
+      padding: 3px 8px;
       border-radius: 999px;
       background: var(--primary);
       color: #fff;
@@ -144,27 +148,39 @@
 
     .my-turn .turn-badge { background: var(--success); }
 
-    /* Tables & Lists */
+    /* Filters Bar */
+    .filter-bar {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+
+    /* Tables */
     .table-wrap {
       overflow-x: auto;
+      max-height: 420px;
     }
 
     table {
       width: 100%;
       border-collapse: collapse;
-      font-size: 0.88rem;
+      font-size: 0.85rem;
     }
 
     th, td {
       text-align: left;
-      padding: 10px 8px;
+      padding: 8px 6px;
       border-bottom: 1px solid var(--border);
+      white-space: nowrap;
     }
 
     th {
       font-weight: 600;
       color: var(--muted);
       background: #f8fafc;
+      position: sticky;
+      top: 0;
+      z-index: 1;
     }
 
     tr.active-row td {
@@ -173,18 +189,84 @@
       color: #15803d;
     }
 
+    /* Badges */
+    .badge-paid {
+      background: #dcfce7;
+      color: #15803d;
+      padding: 3px 6px;
+      border-radius: 4px;
+      font-weight: 600;
+      font-size: 0.75rem;
+      display: inline-block;
+    }
+
+    .badge-unpaid {
+      background: #fee2e2;
+      color: #b91c1c;
+      padding: 3px 6px;
+      border-radius: 4px;
+      font-weight: 600;
+      font-size: 0.75rem;
+      display: inline-block;
+    }
+
+    .action-btn {
+      padding: 4px 8px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      border-radius: 4px;
+      border: none;
+      cursor: pointer;
+    }
+
+    .action-btn.pay { background: var(--success); color: #fff; }
+    .action-btn.unpay { background: #94a3b8; color: #fff; }
+
+    /* Summary Bar */
+    .summary-card {
+      display: flex;
+      justify-content: space-between;
+      background: #f1f5f9;
+      padding: 10px 14px;
+      border-radius: 8px;
+      margin-bottom: 12px;
+      font-size: 0.85rem;
+    }
+
+    .summary-card b { color: var(--text); }
+
     .status-msg {
       text-align: center;
-      font-size: 0.88rem;
-      color: #dc2626;
-      margin-top: 10px;
+      font-size: 0.85rem;
+      color: var(--danger);
+      margin-top: 8px;
     }
 
     .fcm-status {
-      font-size: 0.78rem;
+      font-size: 0.75rem;
       color: var(--muted);
       text-align: center;
-      margin-top: 8px;
+      margin-top: 10px;
+    }
+
+    /* Modal */
+    .modal {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.45);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+      z-index: 100;
+    }
+
+    .modal-content {
+      background: #fff;
+      width: 100%;
+      max-width: 420px;
+      border-radius: 12px;
+      padding: 18px;
     }
 
     .hidden { display: none !important; }
@@ -194,7 +276,7 @@
 
   <div class="container">
 
-    <!-- ================= LOGIN SCREEN ================= -->
+    <!-- ================= LOGIN VIEW ================= -->
     <div id="loginView" class="card">
       <h1>🏢 Society Manager</h1>
       <p class="subtitle">Login to check gate turn, maintenance & ledger</p>
@@ -215,7 +297,7 @@
       </form>
     </div>
 
-    <!-- ================= DASHBOARD SCREEN ================= -->
+    <!-- ================= DASHBOARD VIEW ================= -->
     <div id="dashboardView" class="hidden">
       <div class="top-bar">
         <div>
@@ -225,11 +307,11 @@
         <button id="logoutBtn" class="btn-outline">Logout</button>
       </div>
 
-      <!-- Current Week Gate Turn Banner -->
+      <!-- Gate Turn Alert Banner -->
       <div id="currentTurnBox" class="turn-banner">
         <span id="turnBadge" class="turn-badge">Current Gate Turn</span>
-        <h2 id="activeFamilyTitle" style="margin-bottom: 4px;">Loading...</h2>
-        <div id="activeDateRange" style="font-size: 0.84rem; color: var(--muted);">Checking schedule...</div>
+        <h2 id="activeFamilyTitle" style="margin-bottom: 2px;">Checking...</h2>
+        <div id="activeDateRange" style="font-size: 0.82rem; color: var(--muted);">Loading dates...</div>
       </div>
 
       <!-- Navigation Tabs -->
@@ -247,9 +329,24 @@
         </div>
       </div>
 
-      <!-- TAB 2: Maintenance -->
+      <!-- TAB 2: Maintenance Records -->
       <div id="maintTab" class="card hidden">
-        <h2>💳 Maintenance Records</h2>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+          <h2>💳 Maintenance Records</h2>
+        </div>
+
+        <!-- Filter Dropdown -->
+        <div class="filter-bar">
+          <select id="maintMonthFilter" onchange="filterMaintenance()">
+            <option value="ALL">All Months</option>
+          </select>
+          <select id="maintStatusFilter" onchange="filterMaintenance()">
+            <option value="ALL">All Status</option>
+            <option value="Paid">Paid</option>
+            <option value="Unpaid">Unpaid / Pending</option>
+          </select>
+        </div>
+
         <div class="table-wrap">
           <table id="maintTable"></table>
         </div>
@@ -257,7 +354,27 @@
 
       <!-- TAB 3: Society Ledger -->
       <div id="ledgerTab" class="card hidden">
-        <h2>📊 Society Ledger</h2>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+          <h2>📊 Society Ledger</h2>
+          <button id="addEntryBtn" class="action-btn pay hidden" onclick="openLedgerModal()">+ Add Entry</button>
+        </div>
+
+        <!-- Ledger Balance Summary -->
+        <div class="summary-card">
+          <div>Total Funds: <b id="sumCredit" style="color: var(--success);">₹0</b></div>
+          <div>Expenses: <b id="sumDebit" style="color: var(--danger);">₹0</b></div>
+          <div>Balance: <b id="sumBalance">₹0</b></div>
+        </div>
+
+        <!-- Filter Dropdown -->
+        <div class="filter-bar">
+          <select id="ledgerTypeFilter" onchange="filterLedger()">
+            <option value="ALL">All Transactions</option>
+            <option value="Fund">Funds / Credit Only</option>
+            <option value="Expense">Expenses / Debit Only</option>
+          </select>
+        </div>
+
         <div class="table-wrap">
           <table id="ledgerTable"></table>
         </div>
@@ -266,13 +383,41 @@
       <div id="fcmStatusText" class="fcm-status"></div>
     </div>
 
+    <!-- ================= ADD LEDGER ENTRY MODAL ================= -->
+    <div id="ledgerModal" class="modal hidden">
+      <div class="modal-content">
+        <h2>Add Ledger Transaction</h2>
+        <form id="ledgerForm">
+          <div class="form-group">
+            <label>Type</label>
+            <select id="entryType" required>
+              <option value="Fund">Fund (Credit / Jama)</option>
+              <option value="Expense">Expense (Debit / Kharcha)</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Amount (₹)</label>
+            <input type="number" id="entryAmount" required min="1" placeholder="e.g. 500" />
+          </div>
+          <div class="form-group">
+            <label>Description / Details</label>
+            <input type="text" id="entryDesc" required placeholder="e.g. Sweeper payment, Electric bill" />
+          </div>
+          <div style="display: flex; gap: 8px; margin-top: 14px;">
+            <button type="button" class="btn-outline" style="flex:1" onclick="closeLedgerModal()">Cancel</button>
+            <button type="submit" id="saveEntryBtn" class="btn" style="flex:1">Save Entry</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
   </div>
 
   <script>
     // ============================================================================
-    // PASTE YOUR GOOGLE APPS SCRIPT WEB APP URL HERE
+    // 1. CONFIGURATION (PASTE YOUR APPS SCRIPT URL HERE)
     // ============================================================================
-    const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxaOjgGNak_slpyi7hewHq9D0Ova3xmzdzk_qhaqDbLf5HrlG9E72kQ5q_4y7d5Mk0m/exec';
+    const APPS_SCRIPT_URL = "https://script.google.com/macros/s/YOUR_DEPLOYMENT_ID/exec";
 
     let currentUser = null;
     let portalData = {
@@ -282,6 +427,7 @@
       ledger: []
     };
 
+    // DOM Elements
     const loginView = document.getElementById("loginView");
     const dashboardView = document.getElementById("dashboardView");
     const loginForm = document.getElementById("loginForm");
@@ -294,288 +440,6 @@
     const activeFamilyTitle = document.getElementById("activeFamilyTitle");
     const activeDateRange = document.getElementById("activeDateRange");
     const fcmStatusText = document.getElementById("fcmStatusText");
+    const addEntryBtn = document.getElementById("addEntryBtn");
 
-    // ============================================================================
-    // 1. INITIALIZE APP
-    // ============================================================================
-    document.addEventListener("DOMContentLoaded", async () => {
-      const savedUser = localStorage.getItem("society_user");
-      if (savedUser) {
-        currentUser = JSON.parse(savedUser);
-        showDashboard();
-        syncFcmTokenWithBackend(currentUser.username);
-      } else {
-        showLogin();
-      }
-      await fetchPortalData();
-    });
-
-    // ============================================================================
-    // 2. SYNC ANDROID FCM TOKEN TO GOOGLE SHEETS ("Users" -> Column F)
-    // ============================================================================
-    function syncFcmTokenWithBackend(username) {
-      if (!username) return;
-
-      if (window.AndroidBridge && typeof window.AndroidBridge.getFcmToken === "function") {
-        let attempts = 0;
-
-        const trySync = () => {
-          attempts++;
-          const token = window.AndroidBridge.getFcmToken();
-
-          if (token && token.trim().length > 0) {
-            fcmStatusText.textContent = "🔔 Registering device for 9:55 PM voice alerts...";
-
-            fetch(APPS_SCRIPT_URL, {
-              method: "POST",
-              headers: { "Content-Type": "text/plain" },
-              body: JSON.stringify({
-                action: "updateFcmToken",
-                username: username,
-                fcmToken: token.trim()
-              })
-            })
-            .then(res => res.json())
-            .then(data => {
-              if (data.success) {
-                fcmStatusText.textContent = "✅ Automatic 9:55 PM Hindi Voice Alerts Active";
-              } else {
-                fcmStatusText.textContent = "⚠️ Alert sync note: " + (data.message || "Check sheet");
-              }
-            })
-            .catch(err => {
-              console.error("FCM sync error:", err);
-              fcmStatusText.textContent = "⚠️ Could not sync notification token";
-            });
-          } else if (attempts < 4) {
-            setTimeout(trySync, 2000);
-          } else {
-            fcmStatusText.textContent = "ℹ️ Waiting for Firebase token...";
-          }
-        };
-
-        trySync();
-      } else {
-        fcmStatusText.textContent = "🌐 Browser Mode (Open in Android App for Voice Alerts)";
-      }
-    }
-
-    // ============================================================================
-    // 3. FETCH DATA FROM APPS SCRIPT doGet
-    // ============================================================================
-    async function fetchPortalData() {
-      try {
-        const res = await fetch(APPS_SCRIPT_URL);
-        const data = await res.json();
-        portalData = data;
-
-        if (currentUser) {
-          renderAllSections();
-        }
-      } catch (err) {
-        console.error("Failed to fetch sheet data:", err);
-      }
-    }
-
-    // ============================================================================
-    // 4. LOGIN HANDLER (Supports getDisplayValues() 2D Array)
-    // ============================================================================
-    loginForm.addEventListener("submit", async (e) => {
-      e.preventDefault();
-      loginError.textContent = "";
-      loginBtn.textContent = "Verifying...";
-      loginBtn.disabled = true;
-
-      const uInput = document.getElementById("username").value.trim();
-      const pInput = document.getElementById("password").value.trim();
-
-      if (!portalData.users || portalData.users.length === 0) {
-        await fetchPortalData();
-      }
-
-      // Skip row 0 (header row)
-      const userRows = (portalData.users || []).slice(1);
-
-      // Detect column positions dynamically from header row if possible
-      const headers = (portalData.users[0] || []).map(h => String(h).toLowerCase());
-      const passIdx = headers.findIndex(h => h.includes("pass")) !== -1
-        ? headers.findIndex(h => h.includes("pass"))
-        : 1; // Default password col B (index 1) or col C (index 2)
-      const familyIdx = headers.findIndex(h => h.includes("family") || h.includes("name") && !h.includes("user")) !== -1
-        ? headers.findIndex(h => h.includes("family") || (h.includes("name") && !h.includes("user")))
-        : (passIdx === 1 ? 2 : 1);
-
-      const matchedRow = userRows.find(row => {
-        const rowUser = String(row[0] || "").trim().toLowerCase();
-        const rowPass = String(row[passIdx] || "").trim();
-        return rowUser === uInput.toLowerCase() && rowPass === pInput;
-      });
-
-      loginBtn.textContent = "Login";
-      loginBtn.disabled = false;
-
-      if (matchedRow) {
-        currentUser = {
-          username: String(matchedRow[0]).trim(),
-          familyName: String(matchedRow[familyIdx] || matchedRow[0]).trim()
-        };
-
-        localStorage.setItem("society_user", JSON.stringify(currentUser));
-        showDashboard();
-        syncFcmTokenWithBackend(currentUser.username);
-        renderAllSections();
-      } else {
-        loginError.textContent = "Invalid username or password.";
-      }
-    });
-
-    // ============================================================================
-    // 5. RENDER GATE TURN, MAINTENANCE & LEDGER
-    // ============================================================================
-    function parseFlexibleDate(str) {
-      if (!str) return null;
-      const clean = String(str).trim();
-      const parts = clean.split(/[\/\-]/);
-      if (parts.length === 3 && parts[0].length <= 2 && parts[2].length === 4) {
-        return new Date(Number(parts[2]), Number(parts[1]) - 1, Number(parts[0]));
-      }
-      const d = new Date(clean);
-      return isNaN(d.getTime()) ? null : d;
-    }
-
-    function renderAllSections() {
-      renderGateTurn();
-      renderGenericTable("maintTable", portalData.maintenance);
-      renderGenericTable("ledgerTable", portalData.ledger);
-    }
-
-    function renderGateTurn() {
-      const rows = portalData.gateTurns || [];
-      const table = document.getElementById("gateTable");
-
-      if (rows.length <= 1) {
-        table.innerHTML = "<tr><td>No schedule data available.</td></tr>";
-        return;
-      }
-
-      const headers = rows[0];
-      const dataRows = rows.slice(1);
-
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-
-      let activeFamily = null;
-      let activeRange = "";
-
-      let html = "<thead><tr>";
-      headers.forEach(h => { html += `<th>${h}</th>`; });
-      html += "</tr></thead><tbody>";
-
-      dataRows.forEach(r => {
-        const start = parseFlexibleDate(r[0]);
-        const end = parseFlexibleDate(r[1]);
-        const family = String(r[2] || "").trim();
-
-        let isCurrent = false;
-        if (start && end) {
-          start.setHours(0, 0, 0, 0);
-          end.setHours(23, 59, 59, 999);
-          if (today >= start && today <= end) {
-            isCurrent = true;
-            activeFamily = family;
-            activeRange = `${r[0]} to ${r[1]}`;
-          }
-        }
-
-        html += `<tr class="${isCurrent ? "active-row" : ""}">`;
-        r.forEach((cell, idx) => {
-          html += `<td>${cell}${isCurrent && idx === 2 ? " 🔒" : ""}</td>`;
-        });
-        html += "</tr>";
-      });
-
-      html += "</tbody>";
-      table.innerHTML = html;
-
-      // Update Highlight Banner
-      if (activeFamily) {
-        const isMyTurn = currentUser &&
-          currentUser.familyName.toLowerCase() === activeFamily.toLowerCase();
-
-        activeFamilyTitle.textContent = isMyTurn
-          ? `🚪 Aapka Turn Hai! (${activeFamily})`
-          : activeFamily;
-        activeDateRange.textContent = `${activeRange} • Lock gate by 10:00 PM`;
-
-        if (isMyTurn) {
-          currentTurnBox.classList.add("my-turn");
-          turnBadge.textContent = "Your Active Turn";
-        } else {
-          currentTurnBox.classList.remove("my-turn");
-          turnBadge.textContent = "Current Gate Turn";
-        }
-      } else {
-        activeFamilyTitle.textContent = "No Active Turn Today";
-        activeDateRange.textContent = "Check upcoming schedule below";
-      }
-    }
-
-    function renderGenericTable(tableId, rows) {
-      const table = document.getElementById(tableId);
-      if (!rows || rows.length === 0) {
-        table.innerHTML = "<tr><td>No records found.</td></tr>";
-        return;
-      }
-
-      const headers = rows[0];
-      const body = rows.slice(1);
-
-      let html = "<thead><tr>";
-      headers.forEach(h => { html += `<th>${h}</th>`; });
-      html += "</tr></thead><tbody>";
-
-      body.forEach(r => {
-        html += "<tr>";
-        r.forEach(cell => { html += `<td>${cell}</td>`; });
-        html += "</tr>";
-      });
-
-      html += "</tbody>";
-      table.innerHTML = html;
-    }
-
-    // ============================================================================
-    // 6. UI NAVIGATION & LOGOUT
-    // ============================================================================
-    function switchTab(tabId, btn) {
-      ["gateTab", "maintTab", "ledgerTab"].forEach(id => {
-        document.getElementById(id).classList.add("hidden");
-      });
-      document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
-
-      document.getElementById(tabId).classList.remove("hidden");
-      btn.classList.add("active");
-    }
-
-    function showDashboard() {
-      loginView.classList.add("hidden");
-      dashboardView.classList.remove("hidden");
-      if (currentUser) {
-        welcomeText.textContent = `Namaste, ${currentUser.familyName}!`;
-        userSubText.textContent = `Logged in as @${currentUser.username}`;
-      }
-    }
-
-    function showLogin() {
-      dashboardView.classList.add("hidden");
-      loginView.classList.remove("hidden");
-    }
-
-    document.getElementById("logoutBtn").addEventListener("click", () => {
-      localStorage.removeItem("society_user");
-      currentUser = null;
-      showLogin();
-    });
-  </script>
-</body>
-</html>
+    // =================================================
